@@ -7,7 +7,8 @@
         xmlns:dxrt="http://schemas.devexpress.com/winfx/2008/xaml/ribbon/themekeys"
         xmlns:dxb="http://schemas.devexpress.com/winfx/2008/xaml/bars"
         xmlns:vm="clr-namespace:VisionAlgolismViewer.ViewModels"
-        Title="Vision Algorithm Viewer - IrfanView Style"
+        xmlns:local="clr-namespace:VisionAlgolismViewer.Converters"
+        Title="Image Helper Viewer"
         Height="800" Width="1400"
         WindowStartupLocation="CenterScreen">
 
@@ -85,6 +86,14 @@
                         <dxb:BarButtonItem Content="Emboss"
                                           Command="{Binding ApplyEmbossCommand}"/>
                     </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="EyeReduction">
+                        <dxb:BarButtonItem Content="Red Reduction"
+                      Command="{Binding ApplyRedEyeReductionCommand}"/>
+                        <dxb:BarButtonItem Content="Blue Reduction"
+                      Command="{Binding ApplyBlueEyeReductionCommand}"/>
+                        <dxb:BarButtonItem Content="Green Reduction"
+                      Command="{Binding ApplyGreenEyeReductionCommand}"/>
+                    </dxr:RibbonPageGroup>
                 </dxr:RibbonPage>
 
             </dxr:RibbonDefaultPageCategory>
@@ -97,62 +106,395 @@
                 <ColumnDefinition Width="350"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Image Viewer -->
-            <Border x:Name="ImageBorder" Grid.Column="0" Background="#FF2D2D30" Margin="5">
-                <Grid>
-                    <Image x:Name="MainImage"
-                           Source="{Binding CurrentImage}"
-                           Stretch="{Binding ImageStretch}"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center"
-                           RenderOptions.BitmapScalingMode="HighQuality"
-                           MouseMove="MainImage_MouseMove"
-                           MouseLeave="MainImage_MouseLeave"/>
-                    <ScrollViewer x:Name="ImageScrollViewer"
-                                 HorizontalScrollBarVisibility="Auto"
-                                 VerticalScrollBarVisibility="Auto"
-                                 Visibility="Collapsed">
-                        <Image x:Name="ScrollImage"
-                               Source="{Binding CurrentImage}"
-                               Stretch="None"
-                               RenderOptions.BitmapScalingMode="HighQuality"
-                               MouseMove="ScrollImage_MouseMove"
-                               MouseLeave="ScrollImage_MouseLeave"/>
-                    </ScrollViewer>
+            <!-- Image Viewers Container -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                    <!-- Pixel Info Overlay -->
-                    <Border x:Name="PixelInfoPanel"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Top"
-                            Margin="10"
-                            Background="#DD000000"
-                            BorderBrush="#FF555555"
-                            BorderThickness="1"
-                            CornerRadius="4"
-                            Padding="10,5"
-                            Visibility="Collapsed">
-                        <StackPanel>
-                            <TextBlock x:Name="PixelPositionText"
-                                      Text="X: 0, Y: 0"
+                <!-- History Navigation Bar -->
+                <Border Grid.Row="0" Background="#FF252526" BorderBrush="#FF3E3E42" BorderThickness="0,0,0,1" Padding="10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Back Button -->
+                        <dx:SimpleButton Grid.Column="0" Content="◀ Back"
+                                        Command="{Binding NavigateBackCommand}"
+                                        Margin="0,0,5,0" Width="80"/>
+
+                        <!-- Forward Button -->
+                        <dx:SimpleButton Grid.Column="1" Content="Forward ▶"
+                                        Command="{Binding NavigateForwardCommand}"
+                                        Margin="0,0,10,0" Width="80"/>
+
+                        <!-- History Info -->
+                        <TextBlock Grid.Column="2"
+                                  VerticalAlignment="Center"
+                                  Foreground="#FF999999"
+                                  Margin="10,0,0,0"
+                                  Text="{Binding HistoryStatusText, FallbackValue='History: 0 / 0'}"/>
+
+                        <!-- History Count Badge -->
+                        <Border Grid.Column="3"
+                               Background="#FF007ACC"
+                               CornerRadius="10"
+                               Padding="8,4"
+                               VerticalAlignment="Center">
+                            <TextBlock Foreground="White" FontWeight="Bold" FontSize="11">
+                                <Run Text="{Binding ImageHistory.Count, Mode=OneWay, FallbackValue=0}"/>
+                                <Run Text=" / 5"/>
+                            </TextBlock>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="5"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                <!-- Original Image Viewer -->
+                <Border Grid.Column="0" Background="#FF2D2D30" Margin="5">
+                    <Grid>
+                        <Image x:Name="OriginalImage"
+                               Source="{Binding OriginalImage}"
+                               Stretch="{Binding ImageStretch}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                        <!-- Original Label -->
+                        <Border HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Margin="10"
+                                Background="#DD000000"
+                                BorderBrush="#FF555555"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8,4">
+                            <TextBlock Text="Original"
                                       Foreground="White"
-                                      FontSize="11"
-                                      FontFamily="Consolas"/>
-                            <TextBlock x:Name="PixelRgbText"
-                                      Text="RGB: (0, 0, 0)"
-                                      Foreground="#FFFF6B6B"
-                                      FontSize="11"
-                                      FontFamily="Consolas"
-                                      Margin="0,2,0,0"/>
-                            <TextBlock x:Name="PixelHsvText"
-                                      Text="HSV: (0°, 0%, 0%)"
+                                      FontSize="12"
+                                      FontWeight="Bold"/>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Splitter -->
+                <GridSplitter Grid.Column="1"
+                             Width="5"
+                             HorizontalAlignment="Stretch"
+                             Background="#FF3E3E42"/>
+
+                <!-- Processed Image Viewer -->
+                <Border Grid.Column="2" Background="#FF2D2D30" Margin="5">
+                    <Grid>
+                        <Image x:Name="MainImage"
+                               Source="{Binding ProcessedImage}"
+                               Stretch="{Binding ImageStretch}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               MouseMove="MainImage_MouseMove"
+                               MouseLeave="MainImage_MouseLeave"/>
+                        <ScrollViewer x:Name="ImageScrollViewer"
+                                     HorizontalScrollBarVisibility="Auto"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Visibility="Collapsed">
+                            <Image x:Name="ScrollImage"
+                                   Source="{Binding ProcessedImage}"
+                                   Stretch="None"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   MouseMove="ScrollImage_MouseMove"
+                                   MouseLeave="ScrollImage_MouseLeave"/>
+                        </ScrollViewer>
+
+                        <!-- Processed Label -->
+                        <Border HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Margin="10"
+                                Background="#DD000000"
+                                BorderBrush="#FF555555"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="8,4">
+                            <TextBlock Text="Processed"
                                       Foreground="#FF4ECDC4"
-                                      FontSize="11"
-                                      FontFamily="Consolas"
-                                      Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
+                                      FontSize="12"
+                                      FontWeight="Bold"/>
+                        </Border>
+
+                        <!-- Pixel Info Overlay -->
+                        <Border x:Name="PixelInfoPanel"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Margin="10"
+                                Background="#DD000000"
+                                BorderBrush="#FF555555"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="10,5"
+                                Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock x:Name="PixelPositionText"
+                                          Text="X: 0, Y: 0"
+                                          Foreground="White"
+                                          FontSize="11"
+                                          FontFamily="Consolas"/>
+                                <TextBlock x:Name="PixelRgbText"
+                                          Text="RGB: (0, 0, 0)"
+                                          Foreground="#FFFF6B6B"
+                                          FontSize="11"
+                                          FontFamily="Consolas"
+                                          Margin="0,2,0,0"/>
+                                <TextBlock x:Name="PixelHsvText"
+                                          Text="HSV: (0°, 0%, 0%)"
+                                          Foreground="#FF4ECDC4"
+                                          FontSize="11"
+                                          FontFamily="Consolas"
+                                          Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
                 </Grid>
-            </Border>
+
+                <!-- Effect Control Panel (Row 2) -->
+                <Border Grid.Row="2" Background="#FF252526" BorderBrush="#FF3E3E42" BorderThickness="0,1,0,0" Padding="10">
+                    <StackPanel>
+                        <!-- Red Eye Reduction Controls -->
+                        <dxlc:GroupBox Header="Red Eye Reduction" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="RedEyeReduction"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Detection Threshold" Margin="0,5,0,2" Foreground="White"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="100" Maximum="255"
+                                            Value="{Binding RedEyeThreshold, Mode=TwoWay}"
+                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding RedEyeThreshold}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+
+                                <TextBlock Text="Red Reduction Level" Margin="0,10,0,2" Foreground="#FFFF6B6B"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="100"
+                                            Value="{Binding RedEyeLevel, Mode=TwoWay}"
+                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding RedEyeLevel}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Green Eye Reduction Controls -->
+                        <dxlc:GroupBox Header="Green Eye Reduction" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="GreenEyeReduction"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Detection Threshold" Margin="0,5,0,2" Foreground="White"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="100" Maximum="255"
+                                            Value="{Binding GreenEyeThreshold, Mode=TwoWay}"
+                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding GreenEyeThreshold}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+
+                                <TextBlock Text="Green Reduction Level" Margin="0,10,0,2" Foreground="#FF6BFF6B"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="100"
+                                            Value="{Binding GreenEyeLevel, Mode=TwoWay}"
+                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding GreenEyeLevel}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Blue Eye Reduction Controls -->
+                        <dxlc:GroupBox Header="Blue Eye Reduction" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="BlueEyeReduction"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Detection Threshold" Margin="0,5,0,2" Foreground="White"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="100" Maximum="255"
+                                            Value="{Binding BlueEyeThreshold, Mode=TwoWay}"
+                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BlueEyeThreshold}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+
+                                <TextBlock Text="Blue Reduction Level" Margin="0,10,0,2" Foreground="#FF6B6BFF"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="100"
+                                            Value="{Binding BlueEyeLevel, Mode=TwoWay}"
+                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BlueEyeLevel}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Blur Controls -->
+                        <dxlc:GroupBox Header="Blur" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="Blur"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Blur Sigma" Margin="0,5,0,2" Foreground="White"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0.1" Maximum="50"
+                                            Value="{Binding BlurSigma, Mode=TwoWay}"
+                                            TickFrequency="0.5" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BlurSigma, StringFormat='{}{0:F1}'}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                                
+                                <dx:SimpleButton Content="Apply Blur" Margin="0,10,0,0" Command="{Binding ApplyBlurCommand}"/>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Sharpen Controls -->
+                        <dxlc:GroupBox Header="Sharpen" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="Sharpen"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Sharpen Amount" Margin="0,5,0,2" Foreground="White"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="5"
+                                            Value="{Binding SharpenAmount, Mode=TwoWay}"
+                                            TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SharpenAmount, StringFormat='{}{0:F1}'}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                                <dx:SimpleButton Content="Apply Sharpen" Margin="0,10,0,0"
+                                                  Command="{Binding ApplySharpenCommand}"/>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Median Filter Controls -->
+                        <dxlc:GroupBox Header="Median Filter" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="MedianFilter"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Radius" Margin="0,5,0,2" Foreground="White"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="1" Maximum="10"
+                                            Value="{Binding MedianFilterRadius, Mode=TwoWay}"
+                                            TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding MedianFilterRadius}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                                <dx:SimpleButton Content="Apply Median Filter" Margin="0,10,0,0"
+                                                  Command="{Binding ApplyMedianFilterCommand}"/>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Box Blur Controls -->
+                        <dxlc:GroupBox Header="Box Blur" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="BoxBlur"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Radius" Margin="0,5,0,2" Foreground="White"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="1" Maximum="20"
+                                            Value="{Binding BoxBlurRadius, Mode=TwoWay}"
+                                            TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BoxBlurRadius}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                                <dx:SimpleButton Content="Apply Box Blur" Margin="0,10,0,0"
+                                                  Command="{Binding ApplyBoxBlurCommand}"/>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <!-- Control Panel -->
             <Border Grid.Column="1" BorderThickness="1,0,0,0">

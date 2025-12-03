@@ -45,6 +45,37 @@ namespace VisionAlgolismViewer.Models
             }
         }
 
+        public BitmapImage? GetOriginalBitmap()
+        {
+            if (_originalImage == null || _originalImage.IsDisposed)
+                return null;
+
+            try
+            {
+                // OpenCV Mat to WPF BitmapImage - SUPER FAST!
+                var bitmap = _originalImage.ToBitmap();
+
+                using (var memory = new MemoryStream())
+                {
+                    bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
+                    memory.Position = 0;
+
+                    var bitmapImage = new BitmapImage();
+                    bitmapImage.BeginInit();
+                    bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmapImage.StreamSource = memory;
+                    bitmapImage.EndInit();
+                    bitmapImage.Freeze();
+
+                    return bitmapImage;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public BitmapImage? GetProcessedBitmap()
         {
             if (_processedImage == null || _processedImage.IsDisposed)

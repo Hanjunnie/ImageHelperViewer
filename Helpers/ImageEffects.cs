@@ -1,4 +1,4 @@
-using OpenCvSharp;
+﻿using OpenCvSharp;
 using System;
 
 namespace VisionAlgolismViewer.Helpers
@@ -235,9 +235,13 @@ namespace VisionAlgolismViewer.Helpers
         /// <summary>
         /// Red-Eye Reduction - removes red eye effect from flash photography
         /// </summary>
-        public static void ApplyRedEyeReduction(Mat image, int threshold = 150)
+        /// <param name="image">Input image</param>
+        /// <param name="threshold">Detection threshold (100-255)</param>
+        /// <param name="redLevel">Red reduction level (0-100, default 50)</param>
+        public static void ApplyRedEyeReduction(Mat image, int threshold = 150, int redLevel = 50)
         {
             threshold = Math.Clamp(threshold, 100, 255);
+            redLevel = Math.Clamp(redLevel, 0, 100);
 
             Mat[] channels = Cv2.Split(image);
             Mat mask = new Mat();
@@ -252,10 +256,21 @@ namespace VisionAlgolismViewer.Helpers
             Cv2.BitwiseAnd(redMask, rgMask, mask);
             Cv2.BitwiseAnd(mask, rbMask, mask);
 
-            // Reduce red channel in detected areas
-            channels[2].SetTo(channels[1], mask);
+            // Apply reduction - blend red channel with average of green and blue
+            Mat reducedRed = new Mat();
+            Cv2.AddWeighted(channels[0], 0.5, channels[1], 0.5, 0, reducedRed);
+
+            // Apply reduction based on redLevel
+            float reductionFactor = redLevel / 100.0f;
+            Mat blended = new Mat();
+            Cv2.AddWeighted(channels[2], 1.0 - reductionFactor, reducedRed, reductionFactor, 0, blended);
+
+            // TEST: Apply to entire image to see if logic works
+            // blended.CopyTo(channels[2], mask);  // Original: only masked areas
+            blended.CopyTo(channels[2]);  // TEST: apply to entire image
 
             Cv2.Merge(channels, image);
+            blended.Dispose();
 
             foreach (var ch in channels) ch.Dispose();
             mask.Dispose();
@@ -264,14 +279,19 @@ namespace VisionAlgolismViewer.Helpers
             blueComp.Dispose();
             rgMask.Dispose();
             rbMask.Dispose();
+            reducedRed.Dispose();
         }
 
         /// <summary>
         /// Green-Eye Reduction - removes green/yellow eye effect
         /// </summary>
-        public static void ApplyGreenEyeReduction(Mat image, int threshold = 150)
+        /// <param name="image">Input image</param>
+        /// <param name="threshold">Detection threshold (100-255)</param>
+        /// <param name="greenLevel">Green reduction level (0-100, default 50)</param>
+        public static void ApplyGreenEyeReduction(Mat image, int threshold = 150, int greenLevel = 50)
         {
             threshold = Math.Clamp(threshold, 100, 255);
+            greenLevel = Math.Clamp(greenLevel, 0, 100);
 
             Mat[] channels = Cv2.Split(image);
             Mat mask = new Mat();
@@ -286,12 +306,21 @@ namespace VisionAlgolismViewer.Helpers
             Cv2.BitwiseAnd(greenMask, grMask, mask);
             Cv2.BitwiseAnd(mask, gbMask, mask);
 
-            // Reduce green channel in detected areas
-            Mat avg = new Mat();
-            Cv2.AddWeighted(channels[0], 0.5, channels[2], 0.5, 0, avg);
-            avg.CopyTo(channels[1], mask);
+            // Apply reduction - blend green channel with average of red and blue
+            Mat reducedGreen = new Mat();
+            Cv2.AddWeighted(channels[0], 0.5, channels[2], 0.5, 0, reducedGreen);
+
+            // Apply reduction based on greenLevel
+            float reductionFactor = greenLevel / 100.0f;
+            Mat blended = new Mat();
+            Cv2.AddWeighted(channels[1], 1.0 - reductionFactor, reducedGreen, reductionFactor, 0, blended);
+
+            // TEST: Apply to entire image to see if logic works
+            // blended.CopyTo(channels[1], mask);  // Original: only masked areas
+            blended.CopyTo(channels[1]);  // TEST: apply to entire image
 
             Cv2.Merge(channels, image);
+            blended.Dispose();
 
             foreach (var ch in channels) ch.Dispose();
             mask.Dispose();
@@ -300,15 +329,19 @@ namespace VisionAlgolismViewer.Helpers
             blueComp.Dispose();
             grMask.Dispose();
             gbMask.Dispose();
-            avg.Dispose();
+            reducedGreen.Dispose();
         }
 
         /// <summary>
         /// Blue-Eye Reduction - removes blue eye effect
         /// </summary>
-        public static void ApplyBlueEyeReduction(Mat image, int threshold = 150)
+        /// <param name="image">Input image</param>
+        /// <param name="threshold">Detection threshold (100-255)</param>
+        /// <param name="blueLevel">Blue reduction level (0-100, default 50)</param>
+        public static void ApplyBlueEyeReduction(Mat image, int threshold = 150, int blueLevel = 50)
         {
             threshold = Math.Clamp(threshold, 100, 255);
+            blueLevel = Math.Clamp(blueLevel, 0, 100);
 
             Mat[] channels = Cv2.Split(image);
             Mat mask = new Mat();
@@ -323,12 +356,21 @@ namespace VisionAlgolismViewer.Helpers
             Cv2.BitwiseAnd(blueMask, brMask, mask);
             Cv2.BitwiseAnd(mask, bgMask, mask);
 
-            // Reduce blue channel in detected areas
-            Mat avg = new Mat();
-            Cv2.AddWeighted(channels[1], 0.5, channels[2], 0.5, 0, avg);
-            avg.CopyTo(channels[0], mask);
+            // Apply reduction - blend blue channel with average of red and green
+            Mat reducedBlue = new Mat();
+            Cv2.AddWeighted(channels[1], 0.5, channels[2], 0.5, 0, reducedBlue);
+
+            // Apply reduction based on blueLevel
+            float reductionFactor = blueLevel / 100.0f;
+            Mat blended = new Mat();
+            Cv2.AddWeighted(channels[0], 1.0 - reductionFactor, reducedBlue, reductionFactor, 0, blended);
+
+            // TEST: Apply to entire image to see if logic works
+            // blended.CopyTo(channels[0], mask);  // Original: only masked areas
+            blended.CopyTo(channels[0]);  // TEST: apply to entire image
 
             Cv2.Merge(channels, image);
+            blended.Dispose();
 
             foreach (var ch in channels) ch.Dispose();
             mask.Dispose();
@@ -337,7 +379,7 @@ namespace VisionAlgolismViewer.Helpers
             greenComp.Dispose();
             brMask.Dispose();
             bgMask.Dispose();
-            avg.Dispose();
+            reducedBlue.Dispose();
         }
 
         #endregion

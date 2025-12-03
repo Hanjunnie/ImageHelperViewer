@@ -1,8 +1,10 @@
 using DevExpress.Mvvm;
 using Microsoft.Win32;
 using System;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -12,6 +14,26 @@ using VisionAlgolismViewer.Models;
 
 namespace VisionAlgolismViewer.ViewModels
 {
+    public enum EffectType
+    {
+        None,
+        BasicAdjustments,
+        ColorAdjustments,
+        Grayscale,
+        Sepia,
+        Negative,
+        Blur,
+        Sharpen,
+        MedianFilter,
+        EdgeDetection,
+        EdgeDetectionLaplacian,
+        Emboss,
+        BoxBlur,
+        RedEyeReduction,
+        GreenEyeReduction,
+        BlueEyeReduction
+    }
+
     public class MainViewModel : ViewModelBase
     {
         private readonly ImageProcessor _imageProcessor;
@@ -22,11 +44,18 @@ namespace VisionAlgolismViewer.ViewModels
 
         #region Properties
 
-        private BitmapImage? _currentImage;
-        public BitmapImage? CurrentImage
+        private BitmapImage? _originalImage;
+        public BitmapImage? OriginalImage
         {
-            get => _currentImage;
-            set => SetProperty(ref _currentImage, value, nameof(CurrentImage));
+            get => _originalImage;
+            set => SetProperty(ref _originalImage, value, nameof(OriginalImage));
+        }
+
+        private BitmapImage? _processedImage;
+        public BitmapImage? ProcessedImage
+        {
+            get => _processedImage;
+            set => SetProperty(ref _processedImage, value, nameof(ProcessedImage));
         }
 
         private string _statusText = "Ready";
@@ -41,6 +70,13 @@ namespace VisionAlgolismViewer.ViewModels
         {
             get => _isImageLoaded;
             set => SetProperty(ref _isImageLoaded, value, nameof(IsImageLoaded));
+        }
+
+        private EffectType _currentEffectType = EffectType.None;
+        public EffectType CurrentEffectType
+        {
+            get => _currentEffectType;
+            set => SetProperty(ref _currentEffectType, value, nameof(CurrentEffectType));
         }
 
         // Basic Adjustments
@@ -164,6 +200,126 @@ namespace VisionAlgolismViewer.ViewModels
             set => SetProperty(ref _sharpenAmount, value, nameof(SharpenAmount));
         }
 
+        private int _medianFilterRadius = 2;
+        public int MedianFilterRadius
+        {
+            get => _medianFilterRadius;
+            set => SetProperty(ref _medianFilterRadius, value, nameof(MedianFilterRadius));
+        }
+
+        private int _boxBlurRadius = 3;
+        public int BoxBlurRadius
+        {
+            get => _boxBlurRadius;
+            set => SetProperty(ref _boxBlurRadius, value, nameof(BoxBlurRadius));
+        }
+
+        // Eye Reduction Parameters
+        // Red Eye Reduction
+        private int _redEyeThreshold = 150;
+        public int RedEyeThreshold
+        {
+            get => _redEyeThreshold;
+            set
+            {
+                if (SetProperty(ref _redEyeThreshold, value, nameof(RedEyeThreshold)))
+                {
+                    if (CurrentEffectType == EffectType.RedEyeReduction)
+                    {
+                        ApplyRedReductionInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
+        private int _redEyeLevel = 50;
+        public int RedEyeLevel
+        {
+            get => _redEyeLevel;
+            set
+            {
+                if (SetProperty(ref _redEyeLevel, value, nameof(RedEyeLevel)))
+                {
+                    if (CurrentEffectType == EffectType.RedEyeReduction)
+                    {
+                        ApplyRedReductionInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
+        // Green Eye Reduction
+        private int _greenEyeThreshold = 150;
+        public int GreenEyeThreshold
+        {
+            get => _greenEyeThreshold;
+            set
+            {
+                if (SetProperty(ref _greenEyeThreshold, value, nameof(GreenEyeThreshold)))
+                {
+                    if (CurrentEffectType == EffectType.GreenEyeReduction)
+                    {
+                        ApplyGreenReductionInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
+        private int _greenEyeLevel = 50;
+        public int GreenEyeLevel
+        {
+            get => _greenEyeLevel;
+            set
+            {
+                if (SetProperty(ref _greenEyeLevel, value, nameof(GreenEyeLevel)))
+                {
+                    if (CurrentEffectType == EffectType.GreenEyeReduction)
+                    {
+                        ApplyGreenReductionInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
+        // Blue Eye Reduction
+        private int _blueEyeThreshold = 150;
+        public int BlueEyeThreshold
+        {
+            get => _blueEyeThreshold;
+            set
+            {
+                if (SetProperty(ref _blueEyeThreshold, value, nameof(BlueEyeThreshold)))
+                {
+                    if (CurrentEffectType == EffectType.BlueEyeReduction)
+                    {
+                        ApplyBlueReductionInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
+        private int _blueEyeLevel = 50;
+        public int BlueEyeLevel
+        {
+            get => _blueEyeLevel;
+            set
+            {
+                if (SetProperty(ref _blueEyeLevel, value, nameof(BlueEyeLevel)))
+                {
+                    if (CurrentEffectType == EffectType.BlueEyeReduction)
+                    {
+                        ApplyBlueReductionInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
         // Image Display
         private System.Windows.Media.Stretch _imageStretch = System.Windows.Media.Stretch.Uniform;
         public System.Windows.Media.Stretch ImageStretch
@@ -171,6 +327,36 @@ namespace VisionAlgolismViewer.ViewModels
             get => _imageStretch;
             set => SetProperty(ref _imageStretch, value, nameof(ImageStretch));
         }
+
+        // Image History Management
+        private ObservableCollection<BitmapImage> _imageHistory = new ObservableCollection<BitmapImage>();
+        public ObservableCollection<BitmapImage> ImageHistory
+        {
+            get => _imageHistory;
+            set => SetProperty(ref _imageHistory, value, nameof(ImageHistory));
+        }
+
+        private int _currentHistoryIndex = -1;
+        public int CurrentHistoryIndex
+        {
+            get => _currentHistoryIndex;
+            set
+            {
+                if (SetProperty(ref _currentHistoryIndex, value, nameof(CurrentHistoryIndex)))
+                {
+                    RaisePropertyChanged(nameof(CanNavigateBack));
+                    RaisePropertyChanged(nameof(CanNavigateForward));
+                    RaisePropertyChanged(nameof(HistoryStatusText));
+                }
+            }
+        }
+
+        public bool CanNavigateBack => CurrentHistoryIndex > 0;
+        public bool CanNavigateForward => CurrentHistoryIndex < ImageHistory.Count - 1;
+
+        public string HistoryStatusText => $"History: {CurrentHistoryIndex + 1} / {ImageHistory.Count}";
+
+        private const int MaxHistoryCount = 5;
 
         #endregion
 
@@ -195,6 +381,8 @@ namespace VisionAlgolismViewer.ViewModels
         public ICommand ApplyRedEyeReductionCommand { get; }
         public ICommand ApplyGreenEyeReductionCommand { get; }
         public ICommand ApplyBlueEyeReductionCommand { get; }
+        public ICommand NavigateBackCommand { get; }
+        public ICommand NavigateForwardCommand { get; }
 
         #endregion
 
@@ -219,6 +407,11 @@ namespace VisionAlgolismViewer.ViewModels
             ApplyEdgeDetectionLaplacianCommand = new DelegateCommand(ApplyEdgeDetectionLaplacian, CanApplyFilter);
             ApplyEmbossCommand = new DelegateCommand(ApplyEmboss, CanApplyFilter);
             ApplyBoxBlurCommand = new DelegateCommand(ApplyBoxBlur, CanApplyFilter);
+            ApplyRedEyeReductionCommand = new DelegateCommand(ApplyRedReduction, CanApplyFilter);
+            ApplyBlueEyeReductionCommand = new DelegateCommand(ApplyBlueReduction, CanApplyFilter);
+            ApplyGreenEyeReductionCommand = new DelegateCommand(ApplyGreenReduction, CanApplyFilter);
+            NavigateBackCommand = new DelegateCommand(NavigateBack, () => CanNavigateBack);
+            NavigateForwardCommand = new DelegateCommand(NavigateForward, () => CanNavigateForward);
         }
 
         #region Command Methods
@@ -238,7 +431,17 @@ namespace VisionAlgolismViewer.ViewModels
                     Trace.WriteLine("Image LoadStart");
                     _imageProcessor.LoadImage(dialog.FileName);
                     ResetAllParameters();
+                    UpdateOriginalImage();
                     UpdateCurrentImage();
+
+                    // Initialize history with original image
+                    ImageHistory.Clear();
+                    if (OriginalImage != null)
+                    {
+                        ImageHistory.Add(OriginalImage);
+                        CurrentHistoryIndex = 0;
+                    }
+
                     IsImageLoaded = true;
                     StatusText = $"Loaded: {Path.GetFileName(dialog.FileName)}";
                     RaiseCanExecuteChanged();
@@ -347,62 +550,155 @@ namespace VisionAlgolismViewer.ViewModels
 
         private void ApplyGrayscale()
         {
+            CurrentEffectType = EffectType.Grayscale;
             ApplyFilter(() => ImageEffects.ApplyGrayscale(_imageProcessor.GetProcessedImage()!), "Grayscale");
         }
 
         private void ApplySepia()
         {
+            CurrentEffectType = EffectType.Sepia;
             ApplyFilter(() => ImageEffects.ApplySepia(_imageProcessor.GetProcessedImage()!), "Sepia");
         }
 
         private void ApplyNegative()
         {
+            CurrentEffectType = EffectType.Negative;
             ApplyFilter(() => ImageEffects.ApplyNegative(_imageProcessor.GetProcessedImage()!), "Negative");
         }
 
         private void ApplyBlur()
         {
+            CurrentEffectType = EffectType.Blur;
             ApplyFilter(() => ImageEffects.ApplyBlur(_imageProcessor.GetProcessedImage()!, BlurSigma), "Blur");
         }
 
         private void ApplySharpen()
         {
+            CurrentEffectType = EffectType.Sharpen;
             ApplyFilter(() => ImageEffects.ApplySharpen(_imageProcessor.GetProcessedImage()!, SharpenAmount), "Sharpen");
         }
 
         private void ApplyMedianFilter()
         {
-            ApplyFilter(() => ImageEffects.ApplyMedianFilter(_imageProcessor.GetProcessedImage()!, 2), "Median Filter");
+            CurrentEffectType = EffectType.MedianFilter;
+            ApplyFilter(() => ImageEffects.ApplyMedianFilter(_imageProcessor.GetProcessedImage()!, MedianFilterRadius), "Median Filter");
         }
 
         private void ApplyEdgeDetection()
         {
+            CurrentEffectType = EffectType.EdgeDetection;
             ApplyFilter(() => ImageEffects.ApplyEdgeDetection(_imageProcessor.GetProcessedImage()!), "Edge Detection (Sobel)");
         }
 
         private void ApplyEdgeDetectionLaplacian()
         {
+            CurrentEffectType = EffectType.EdgeDetectionLaplacian;
             ApplyFilter(() => ImageEffects.ApplyEdgeDetectionLaplacian(_imageProcessor.GetProcessedImage()!), "Edge Detection (Laplacian)");
         }
 
         private void ApplyEmboss()
         {
+            CurrentEffectType = EffectType.Emboss;
             ApplyFilter(() => ImageEffects.ApplyEmboss(_imageProcessor.GetProcessedImage()!), "Emboss");
         }
 
         private void ApplyBoxBlur()
         {
-            ApplyFilter(() => ImageEffects.ApplyBoxBlur(_imageProcessor.GetProcessedImage()!, 3), "Box Blur");
+            CurrentEffectType = EffectType.BoxBlur;
+            ApplyFilter(() => ImageEffects.ApplyBoxBlur(_imageProcessor.GetProcessedImage()!, BoxBlurRadius), "Box Blur");
+        }
+
+        private void ApplyRedReduction()
+        {
+            if (!IsImageLoaded) return;
+
+            CurrentEffectType = EffectType.RedEyeReduction;
+            ApplyRedReductionInternal();
+            UpdateCurrentImage();
+            AddToHistory(ProcessedImage);
+            StatusText = $"Red Reduction - Threshold: {RedEyeThreshold}, Level: {RedEyeLevel}";
+        }
+
+        private void ApplyRedReductionInternal()
+        {
+            if (!IsImageLoaded) return;
+            // Don't reset - accumulate effects
+            ImageEffects.ApplyRedEyeReduction(_imageProcessor.GetProcessedImage()!, RedEyeThreshold, RedEyeLevel);
+        }
+
+        private void ApplyGreenReduction()
+        {
+            if (!IsImageLoaded) return;
+
+            CurrentEffectType = EffectType.GreenEyeReduction;
+            ApplyGreenReductionInternal();
+            UpdateCurrentImage();
+            AddToHistory(ProcessedImage);
+            StatusText = $"Green Reduction - Threshold: {GreenEyeThreshold}, Level: {GreenEyeLevel}";
+        }
+
+        private void ApplyGreenReductionInternal()
+        {
+            if (!IsImageLoaded) return;
+            // Don't reset - accumulate effects
+            ImageEffects.ApplyGreenEyeReduction(_imageProcessor.GetProcessedImage()!, GreenEyeThreshold, GreenEyeLevel);
+        }
+
+        private void ApplyBlueReduction()
+        {
+            if (!IsImageLoaded) return;
+
+            CurrentEffectType = EffectType.BlueEyeReduction;
+            ApplyBlueReductionInternal();
+            UpdateCurrentImage();
+            AddToHistory(ProcessedImage);
+            StatusText = $"Blue Reduction - Threshold: {BlueEyeThreshold}, Level: {BlueEyeLevel}";
+        }
+
+        private void ApplyBlueReductionInternal()
+        {
+            if (!IsImageLoaded) return;
+            // Don't reset - accumulate effects
+            ImageEffects.ApplyBlueEyeReduction(_imageProcessor.GetProcessedImage()!, BlueEyeThreshold, BlueEyeLevel);
         }
 
         private void ApplyFilter(Action filterAction, string filterName)
         {
             if (!IsImageLoaded) return;
 
-            _imageProcessor.ResetToOriginal();
+            // Don't reset - accumulate effects
             filterAction();
             UpdateCurrentImage();
+            AddToHistory(ProcessedImage);
             StatusText = $"Applied: {filterName}";
+        }
+
+        private void NavigateBack()
+        {
+            if (!CanNavigateBack) return;
+
+            CurrentHistoryIndex--;
+            ProcessedImage = ImageHistory[CurrentHistoryIndex];
+
+            // Update ImageProcessor with the current history image
+            UpdateProcessorFromHistory();
+
+            StatusText = "Navigated to previous image";
+            RaiseNavigationChanged();
+        }
+
+        private void NavigateForward()
+        {
+            if (!CanNavigateForward) return;
+
+            CurrentHistoryIndex++;
+            ProcessedImage = ImageHistory[CurrentHistoryIndex];
+
+            // Update ImageProcessor with the current history image
+            UpdateProcessorFromHistory();
+
+            StatusText = "Navigated to next image";
+            RaiseNavigationChanged();
         }
 
         #endregion
@@ -452,7 +748,12 @@ namespace VisionAlgolismViewer.ViewModels
 
         private void UpdateCurrentImage()
         {
-            CurrentImage = _imageProcessor.GetProcessedBitmap();
+            ProcessedImage = _imageProcessor.GetProcessedBitmap();
+        }
+
+        private void UpdateOriginalImage()
+        {
+            OriginalImage = _imageProcessor.GetOriginalBitmap();
         }
 
         private void ResetAllParameters()
@@ -490,6 +791,63 @@ namespace VisionAlgolismViewer.ViewModels
             (ApplyEdgeDetectionLaplacianCommand as DelegateCommand)?.RaiseCanExecuteChanged();
             (ApplyEmbossCommand as DelegateCommand)?.RaiseCanExecuteChanged();
             (ApplyBoxBlurCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void RaiseNavigationChanged()
+        {
+            (NavigateBackCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            (NavigateForwardCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void AddToHistory(BitmapImage? image)
+        {
+            if (image == null) return;
+
+            // If we're not at the end of history, remove everything after current position
+            if (CurrentHistoryIndex < ImageHistory.Count - 1)
+            {
+                for (int i = ImageHistory.Count - 1; i > CurrentHistoryIndex; i--)
+                {
+                    ImageHistory.RemoveAt(i);
+                }
+            }
+
+            // Add new image to history
+            ImageHistory.Add(image);
+
+            // Enforce max history count - remove oldest (but keep the original at index 0)
+            while (ImageHistory.Count > MaxHistoryCount)
+            {
+                ImageHistory.RemoveAt(1); // Remove second oldest, keep original
+            }
+
+            // Update index to point to the new image
+            CurrentHistoryIndex = ImageHistory.Count - 1;
+            RaisePropertyChanged(nameof(HistoryStatusText));
+            RaiseNavigationChanged();
+        }
+
+        private void UpdateProcessorFromHistory()
+        {
+            // Convert BitmapImage back to Mat and update processor
+            if (ProcessedImage != null)
+            {
+                try
+                {
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        var encoder = new PngBitmapEncoder();
+                        encoder.Frames.Add(BitmapFrame.Create(ProcessedImage));
+                        encoder.Save(memoryStream);
+                        memoryStream.Position = 0;
+                        _imageProcessor.LoadImage(memoryStream);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    StatusText = $"Error updating processor: {ex.Message}";
+                }
+            }
         }
 
         #endregion
