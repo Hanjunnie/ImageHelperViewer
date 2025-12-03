@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <Platforms>AnyCPU;x64</Platforms>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- DevExpress WPF Controls 24.2 -->
+    <PackageReference Include="DevExpress.Wpf.Core" Version="24.2.6" />
+    <PackageReference Include="DevExpress.Wpf.LayoutControl" Version="24.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Ribbon" Version="24.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.All" Version="24.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Docking" Version="24.2.6" />
+
+    <!-- Image Processing - OpenCV (Much Faster!) -->
+    <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
+
+    <!-- Legacy ImageSharp (can be removed if fully migrated) -->
+    <!-- <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" /> -->
+    <!-- <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" /> -->
+
+    <!-- MVVM: DevExpress.Mvvm is included in DevExpress.Wpf.Core -->
+  </ItemGroup>
+
+</Project>
