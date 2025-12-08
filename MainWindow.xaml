@@ -122,6 +122,8 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Back Button -->
@@ -141,14 +143,30 @@
                                   Margin="10,0,0,0"
                                   Text="{Binding HistoryStatusText, FallbackValue='History: 0 / 0'}"/>
 
+                        <!-- Apply Button -->
+                        <dx:SimpleButton Grid.Column="3" Content="Apply"
+                                        Command="{Binding ApplyCurrentChangesCommand}"
+                                        Margin="10,0,5,0" Width="100"
+                                        Background="#FF28A745"
+                                        Foreground="White"
+                                        FontWeight="Bold"/>
+
+                        <!-- Clear Button -->
+                        <dx:SimpleButton Grid.Column="4" Content="Clear"
+                                        Command="{Binding ClearPreviewCommand}"
+                                        Margin="0,0,10,0" Width="100"
+                                        Background="#FFDC3545"
+                                        Foreground="White"
+                                        FontWeight="Bold"/>
+
                         <!-- History Count Badge -->
-                        <Border Grid.Column="3"
+                        <Border Grid.Column="5"
                                Background="#FF007ACC"
                                CornerRadius="10"
                                Padding="8,4"
                                VerticalAlignment="Center">
                             <TextBlock Foreground="White" FontWeight="Bold" FontSize="11">
-                                <Run Text="{Binding ImageHistory.Count, Mode=OneWay, FallbackValue=0}"/>
+                                <Run Text="{Binding HistoryCount, Mode=OneWay, FallbackValue=0}"/>
                                 <Run Text=" / 5"/>
                             </TextBlock>
                         </Border>
@@ -407,8 +425,6 @@
                                     <TextBlock Grid.Column="1" Text="{Binding BlurSigma, StringFormat='{}{0:F1}'}"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
                                 </Grid>
-                                
-                                <dx:SimpleButton Content="Apply Blur" Margin="0,10,0,0" Command="{Binding ApplyBlurCommand}"/>
                             </StackPanel>
                         </dxlc:GroupBox>
 
@@ -434,8 +450,6 @@
                                     <TextBlock Grid.Column="1" Text="{Binding SharpenAmount, StringFormat='{}{0:F1}'}"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
                                 </Grid>
-                                <dx:SimpleButton Content="Apply Sharpen" Margin="0,10,0,0"
-                                                  Command="{Binding ApplySharpenCommand}"/>
                             </StackPanel>
                         </dxlc:GroupBox>
 
@@ -461,8 +475,6 @@
                                     <TextBlock Grid.Column="1" Text="{Binding MedianFilterRadius}"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
                                 </Grid>
-                                <dx:SimpleButton Content="Apply Median Filter" Margin="0,10,0,0"
-                                                  Command="{Binding ApplyMedianFilterCommand}"/>
                             </StackPanel>
                         </dxlc:GroupBox>
 
@@ -488,8 +500,6 @@
                                     <TextBlock Grid.Column="1" Text="{Binding BoxBlurRadius}"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
                                 </Grid>
-                                <dx:SimpleButton Content="Apply Box Blur" Margin="0,10,0,0"
-                                                  Command="{Binding ApplyBoxBlurCommand}"/>
                             </StackPanel>
                         </dxlc:GroupBox>
                     </StackPanel>

@@ -190,28 +190,64 @@ namespace VisionAlgolismViewer.ViewModels
         public float BlurSigma
         {
             get => _blurSigma;
-            set => SetProperty(ref _blurSigma, value, nameof(BlurSigma));
+            set
+            {
+                if (SetProperty(ref _blurSigma, value, nameof(BlurSigma)))
+                {
+                    if (CurrentEffectType == EffectType.Blur)
+                    {
+                        DebounceApplyAdjustments(() => ApplyBlur());
+                    }
+                }
+            }
         }
 
         private float _sharpenAmount = 1.0f;
         public float SharpenAmount
         {
             get => _sharpenAmount;
-            set => SetProperty(ref _sharpenAmount, value, nameof(SharpenAmount));
+            set
+            {
+                if (SetProperty(ref _sharpenAmount, value, nameof(SharpenAmount)))
+                {
+                    if (CurrentEffectType == EffectType.Sharpen)
+                    {
+                        DebounceApplyAdjustments(() => ApplySharpen());
+                    }
+                }
+            }
         }
 
         private int _medianFilterRadius = 2;
         public int MedianFilterRadius
         {
             get => _medianFilterRadius;
-            set => SetProperty(ref _medianFilterRadius, value, nameof(MedianFilterRadius));
+            set
+            {
+                if (SetProperty(ref _medianFilterRadius, value, nameof(MedianFilterRadius)))
+                {
+                    if (CurrentEffectType == EffectType.MedianFilter)
+                    {
+                        DebounceApplyAdjustments(() => ApplyMedianFilter());
+                    }
+                }
+            }
         }
 
         private int _boxBlurRadius = 3;
         public int BoxBlurRadius
         {
             get => _boxBlurRadius;
-            set => SetProperty(ref _boxBlurRadius, value, nameof(BoxBlurRadius));
+            set
+            {
+                if (SetProperty(ref _boxBlurRadius, value, nameof(BoxBlurRadius)))
+                {
+                    if (CurrentEffectType == EffectType.BoxBlur)
+                    {
+                        DebounceApplyAdjustments(() => ApplyBoxBlur());
+                    }
+                }
+            }
         }
 
         // Eye Reduction Parameters
@@ -356,6 +392,8 @@ namespace VisionAlgolismViewer.ViewModels
 
         public string HistoryStatusText => $"History: {CurrentHistoryIndex + 1} / {ImageHistory.Count}";
 
+        public int HistoryCount => ImageHistory.Count;
+
         private const int MaxHistoryCount = 5;
 
         #endregion
@@ -383,12 +421,23 @@ namespace VisionAlgolismViewer.ViewModels
         public ICommand ApplyBlueEyeReductionCommand { get; }
         public ICommand NavigateBackCommand { get; }
         public ICommand NavigateForwardCommand { get; }
+        public ICommand ApplyCurrentChangesCommand { get; }
+        public ICommand ClearPreviewCommand { get; }
 
         #endregion
 
         public MainViewModel()
         {
             _imageProcessor = new ImageProcessor();
+
+            // Subscribe to ImageHistory collection changes
+            ImageHistory.CollectionChanged += (s, e) =>
+            {
+                RaisePropertyChanged(nameof(HistoryStatusText));
+                RaisePropertyChanged(nameof(HistoryCount));
+                RaisePropertyChanged(nameof(CanNavigateBack));
+                RaisePropertyChanged(nameof(CanNavigateForward));
+            };
 
             // Initialize Commands
             OpenImageCommand = new DelegateCommand(OpenImage);
@@ -412,6 +461,8 @@ namespace VisionAlgolismViewer.ViewModels
             ApplyGreenEyeReductionCommand = new DelegateCommand(ApplyGreenReduction, CanApplyFilter);
             NavigateBackCommand = new DelegateCommand(NavigateBack, () => CanNavigateBack);
             NavigateForwardCommand = new DelegateCommand(NavigateForward, () => CanNavigateForward);
+            ApplyCurrentChangesCommand = new DelegateCommand(ApplyCurrentChanges, CanApplyCurrentChanges);
+            ClearPreviewCommand = new DelegateCommand(ClearPreview, CanClearPreview);
         }
 
         #region Command Methods
@@ -615,7 +666,6 @@ namespace VisionAlgolismViewer.ViewModels
             CurrentEffectType = EffectType.RedEyeReduction;
             ApplyRedReductionInternal();
             UpdateCurrentImage();
-            AddToHistory(ProcessedImage);
             StatusText = $"Red Reduction - Threshold: {RedEyeThreshold}, Level: {RedEyeLevel}";
         }
 
@@ -633,7 +683,6 @@ namespace VisionAlgolismViewer.ViewModels
             CurrentEffectType = EffectType.GreenEyeReduction;
             ApplyGreenReductionInternal();
             UpdateCurrentImage();
-            AddToHistory(ProcessedImage);
             StatusText = $"Green Reduction - Threshold: {GreenEyeThreshold}, Level: {GreenEyeLevel}";
         }
 
@@ -651,7 +700,6 @@ namespace VisionAlgolismViewer.ViewModels
             CurrentEffectType = EffectType.BlueEyeReduction;
             ApplyBlueReductionInternal();
             UpdateCurrentImage();
-            AddToHistory(ProcessedImage);
             StatusText = $"Blue Reduction - Threshold: {BlueEyeThreshold}, Level: {BlueEyeLevel}";
         }
 
@@ -669,7 +717,6 @@ namespace VisionAlgolismViewer.ViewModels
             // Don't reset - accumulate effects
             filterAction();
             UpdateCurrentImage();
-            AddToHistory(ProcessedImage);
             StatusText = $"Applied: {filterName}";
         }
 
@@ -699,6 +746,33 @@ namespace VisionAlgolismViewer.ViewModels
 
             StatusText = "Navigated to next image";
             RaiseNavigationChanged();
+        }
+
+        private bool CanApplyCurrentChanges() => IsImageLoaded;
+
+        private void ApplyCurrentChanges()
+        {
+            if (!IsImageLoaded || ProcessedImage == null) return;
+
+            AddToHistory(ProcessedImage);
+            StatusText = "Changes applied to history";
+        }
+
+        private bool CanClearPreview() => IsImageLoaded && CurrentHistoryIndex >= 0;
+
+        private void ClearPreview()
+        {
+            if (!IsImageLoaded) return;
+
+            // Reset to the last applied image (current history index)
+            if (CurrentHistoryIndex >= 0 && CurrentHistoryIndex < ImageHistory.Count)
+            {
+                ProcessedImage = ImageHistory[CurrentHistoryIndex];
+                UpdateProcessorFromHistory();
+                CurrentEffectType = EffectType.None;
+                ResetAllParameters();
+                StatusText = "Preview cleared - returned to last applied state";
+            }
         }
 
         #endregion
@@ -791,6 +865,8 @@ namespace VisionAlgolismViewer.ViewModels
             (ApplyEdgeDetectionLaplacianCommand as DelegateCommand)?.RaiseCanExecuteChanged();
             (ApplyEmbossCommand as DelegateCommand)?.RaiseCanExecuteChanged();
             (ApplyBoxBlurCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            (ApplyCurrentChangesCommand as DelegateCommand)?.RaiseCanExecuteChanged();
+            (ClearPreviewCommand as DelegateCommand)?.RaiseCanExecuteChanged();
         }
 
         private void RaiseNavigationChanged()
@@ -832,21 +908,7 @@ namespace VisionAlgolismViewer.ViewModels
             // Convert BitmapImage back to Mat and update processor
             if (ProcessedImage != null)
             {
-                try
-                {
-                    using (var memoryStream = new MemoryStream())
-                    {
-                        var encoder = new PngBitmapEncoder();
-                        encoder.Frames.Add(BitmapFrame.Create(ProcessedImage));
-                        encoder.Save(memoryStream);
-                        memoryStream.Position = 0;
-                        _imageProcessor.LoadImage(memoryStream);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    StatusText = $"Error updating processor: {ex.Message}";
-                }
+                _imageProcessor.LoadImage(ProcessedImage);
             }
         }
 

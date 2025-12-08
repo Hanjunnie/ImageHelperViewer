@@ -2,6 +2,8 @@ using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace VisionAlgolismViewer.Models
@@ -21,19 +23,32 @@ namespace VisionAlgolismViewer.Models
             _processedImage = _originalImage.Clone();
         }
 
-        public void LoadImage(Stream stream)
+        public void LoadImage(BitmapSource source)
         {
             _originalImage?.Dispose();
             _processedImage?.Dispose();
 
-            stream.Position = 0;
-            using (var ms = new MemoryStream())
-            {
-                stream.CopyTo(ms);
-                var buffer = ms.ToArray();
-                _originalImage = Cv2.ImDecode(buffer, ImreadModes.Color);
-                _processedImage = _originalImage.Clone();
-            }
+            _originalImage = BitmapSourceToMat(source);
+            _processedImage = _originalImage.Clone();
+        }
+
+        private Mat BitmapSourceToMat(BitmapSource source)
+        {
+            var converted = new FormatConvertedBitmap(source, PixelFormats.Bgr24, null, 0);
+            if (converted == null) return new Mat();
+
+            int width = converted.PixelWidth;
+            int height = converted.PixelHeight;
+            int stride = width * 3;
+
+            byte[] pixels = new byte[width * height];
+            converted.CopyPixels(pixels, stride, 0);
+
+            var mat = new Mat(height, width, MatType.CV_8UC3);
+            Marshal.Copy(pixels, 0, mat.Data, pixels.Length);
+
+            return mat;
+
         }
 
         public void ResetToOriginal()
