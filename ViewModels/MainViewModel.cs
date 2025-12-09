@@ -462,7 +462,7 @@ namespace VisionAlgolismViewer.ViewModels
             NavigateBackCommand = new DelegateCommand(NavigateBack, () => CanNavigateBack);
             NavigateForwardCommand = new DelegateCommand(NavigateForward, () => CanNavigateForward);
             ApplyCurrentChangesCommand = new DelegateCommand(ApplyCurrentChanges, CanApplyCurrentChanges);
-            ClearPreviewCommand = new DelegateCommand(ClearPreview, CanClearPreview);
+            ClearPreviewCommand = new DelegateCommand(ClearHistory, CanClearPreview);
         }
 
         #region Command Methods
@@ -484,14 +484,7 @@ namespace VisionAlgolismViewer.ViewModels
                     ResetAllParameters();
                     UpdateOriginalImage();
                     UpdateCurrentImage();
-
-                    // Initialize history with original image
-                    ImageHistory.Clear();
-                    if (OriginalImage != null)
-                    {
-                        ImageHistory.Add(OriginalImage);
-                        CurrentHistoryIndex = 0;
-                    }
+                    ResetHistory();
 
                     IsImageLoaded = true;
                     StatusText = $"Loaded: {Path.GetFileName(dialog.FileName)}";
@@ -502,6 +495,17 @@ namespace VisionAlgolismViewer.ViewModels
                 {
                     StatusText = $"Error: {ex.Message}";
                 }
+            }
+        }
+
+        private void ResetHistory()
+        {
+            // Initialize history with original image
+            ImageHistory.Clear();
+            if (OriginalImage != null)
+            {
+                ImageHistory.Add(OriginalImage);
+                CurrentHistoryIndex = 0;
             }
         }
 
@@ -760,19 +764,13 @@ namespace VisionAlgolismViewer.ViewModels
 
         private bool CanClearPreview() => IsImageLoaded && CurrentHistoryIndex >= 0;
 
-        private void ClearPreview()
+        private void ClearHistory()
         {
             if (!IsImageLoaded) return;
 
-            // Reset to the last applied image (current history index)
-            if (CurrentHistoryIndex >= 0 && CurrentHistoryIndex < ImageHistory.Count)
-            {
-                ProcessedImage = ImageHistory[CurrentHistoryIndex];
-                UpdateProcessorFromHistory();
-                CurrentEffectType = EffectType.None;
-                ResetAllParameters();
-                StatusText = "Preview cleared - returned to last applied state";
-            }
+            _imageProcessor.CopyOrginImage();
+            ResetHistory();
+            UpdateCurrentImage();
         }
 
         #endregion

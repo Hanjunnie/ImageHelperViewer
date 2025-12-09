@@ -1,6 +1,8 @@
+using DevExpress.Xpf.Editors.Internal;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Media;
@@ -32,22 +34,36 @@ namespace VisionAlgolismViewer.Models
             _processedImage = _originalImage.Clone();
         }
 
+        public void CopyOrginImage()
+        {
+            _processedImage?.Dispose();
+            _processedImage = _originalImage?.Clone();
+        }
+
         private Mat BitmapSourceToMat(BitmapSource source)
         {
             var converted = new FormatConvertedBitmap(source, PixelFormats.Bgr24, null, 0);
             if (converted == null) return new Mat();
 
-            int width = converted.PixelWidth;
-            int height = converted.PixelHeight;
-            int stride = width * 3;
+            try
+            {
+                int width = converted.PixelWidth;
+                int height = converted.PixelHeight;
+                int stride = width * 3;
 
-            byte[] pixels = new byte[width * height];
-            converted.CopyPixels(pixels, stride, 0);
+                byte[] pixels = new byte[width * height];
+                converted.CopyPixels(pixels, stride, 0);
 
-            var mat = new Mat(height, width, MatType.CV_8UC3);
-            Marshal.Copy(pixels, 0, mat.Data, pixels.Length);
+                var mat = new Mat(height, width, MatType.CV_8UC3);
+                Marshal.Copy(pixels, 0, mat.Data, pixels.Length);
 
-            return mat;
+                return mat;
+            }
+            catch(Exception ex)
+            {
+                Trace.WriteLine($"[{nameof(BitmapSourceToMat)}] {ex.Message}");
+                return new Mat();
+            }       
 
         }
 
