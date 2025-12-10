@@ -237,49 +237,34 @@ namespace VisionAlgolismViewer.Helpers
         /// </summary>
         /// <param name="image">Input image</param>
         /// <param name="threshold">Detection threshold (100-255)</param>
-        /// <param name="redLevel">Red reduction level (0-100, default 50)</param>
+        /// <param name="redLevel">Red reduction level (0-100: 0=original, 100=fully removed to grayscale)</param>
         public static void ApplyRedEyeReduction(Mat image, int threshold = 150, int redLevel = 50)
         {
             threshold = Math.Clamp(threshold, 100, 255);
             redLevel = Math.Clamp(redLevel, 0, 100);
 
             Mat[] channels = Cv2.Split(image);
-            Mat mask = new Mat();
 
-            // Detect red eyes: R > threshold && R > G * 1.5 && R > B * 1.5
-            Mat redMask = channels[2].GreaterThan(threshold);
-            Mat greenComp = channels[1] * 1.5;
-            Mat blueComp = channels[0] * 1.5;
-            Mat rgMask = channels[2].GreaterThan(greenComp);
-            Mat rbMask = channels[2].GreaterThan(blueComp);
+            // Red 채널에서 threshold 이상인 픽셀만 선택
+            Mat mask = channels[2].Threshold(threshold, 255, ThresholdTypes.Binary);
 
-            Cv2.BitwiseAnd(redMask, rgMask, mask);
-            Cv2.BitwiseAnd(mask, rbMask, mask);
+            float factor = redLevel / 100.0f;
 
-            // Apply reduction - blend red channel with average of green and blue
-            Mat reducedRed = new Mat();
-            Cv2.AddWeighted(channels[0], 0.5, channels[1], 0.5, 0, reducedRed);
+            // Calculate grayscale from Green and Blue channels
+            Mat gray = new Mat();
+            Cv2.AddWeighted(channels[1], 0.5, channels[0], 0.5, 0, gray);
 
-            // Apply reduction based on redLevel
-            float reductionFactor = redLevel / 100.0f;
+            // Blend Red channel with grayscale
             Mat blended = new Mat();
-            Cv2.AddWeighted(channels[2], 1.0 - reductionFactor, reducedRed, reductionFactor, 0, blended);
-
-            // TEST: Apply to entire image to see if logic works
-            // blended.CopyTo(channels[2], mask);  // Original: only masked areas
-            blended.CopyTo(channels[2]);  // TEST: apply to entire image
+            Cv2.AddWeighted(channels[2], 1.0 - factor, gray, factor, 0, blended);
+            blended.CopyTo(channels[2], mask);
 
             Cv2.Merge(channels, image);
-            blended.Dispose();
 
+            gray.Dispose();
+            blended.Dispose();
             foreach (var ch in channels) ch.Dispose();
             mask.Dispose();
-            redMask.Dispose();
-            greenComp.Dispose();
-            blueComp.Dispose();
-            rgMask.Dispose();
-            rbMask.Dispose();
-            reducedRed.Dispose();
         }
 
         /// <summary>
@@ -287,49 +272,34 @@ namespace VisionAlgolismViewer.Helpers
         /// </summary>
         /// <param name="image">Input image</param>
         /// <param name="threshold">Detection threshold (100-255)</param>
-        /// <param name="greenLevel">Green reduction level (0-100, default 50)</param>
+        /// <param name="greenLevel">Green reduction level (0-100: 0=original, 100=fully removed to grayscale)</param>
         public static void ApplyGreenEyeReduction(Mat image, int threshold = 150, int greenLevel = 50)
         {
             threshold = Math.Clamp(threshold, 100, 255);
             greenLevel = Math.Clamp(greenLevel, 0, 100);
 
             Mat[] channels = Cv2.Split(image);
-            Mat mask = new Mat();
 
-            // Detect green eyes: G > threshold && G > R * 1.3 && G > B * 1.3
-            Mat greenMask = channels[1].GreaterThan(threshold);
-            Mat redComp = channels[2] * 1.3;
-            Mat blueComp = channels[0] * 1.3;
-            Mat grMask = channels[1].GreaterThan(redComp);
-            Mat gbMask = channels[1].GreaterThan(blueComp);
+            // Green 채널에서 threshold 이상인 픽셀만 선택
+            Mat mask = channels[1].Threshold(threshold, 255, ThresholdTypes.Binary);
 
-            Cv2.BitwiseAnd(greenMask, grMask, mask);
-            Cv2.BitwiseAnd(mask, gbMask, mask);
+            float factor = greenLevel / 100.0f;
 
-            // Apply reduction - blend green channel with average of red and blue
-            Mat reducedGreen = new Mat();
-            Cv2.AddWeighted(channels[0], 0.5, channels[2], 0.5, 0, reducedGreen);
+            // Calculate grayscale from Red and Blue channels
+            Mat gray = new Mat();
+            Cv2.AddWeighted(channels[2], 0.5, channels[0], 0.5, 0, gray);
 
-            // Apply reduction based on greenLevel
-            float reductionFactor = greenLevel / 100.0f;
+            // Blend Green channel with grayscale
             Mat blended = new Mat();
-            Cv2.AddWeighted(channels[1], 1.0 - reductionFactor, reducedGreen, reductionFactor, 0, blended);
-
-            // TEST: Apply to entire image to see if logic works
-            // blended.CopyTo(channels[1], mask);  // Original: only masked areas
-            blended.CopyTo(channels[1]);  // TEST: apply to entire image
+            Cv2.AddWeighted(channels[1], 1.0 - factor, gray, factor, 0, blended);
+            blended.CopyTo(channels[1], mask);
 
             Cv2.Merge(channels, image);
-            blended.Dispose();
 
+            gray.Dispose();
+            blended.Dispose();
             foreach (var ch in channels) ch.Dispose();
             mask.Dispose();
-            greenMask.Dispose();
-            redComp.Dispose();
-            blueComp.Dispose();
-            grMask.Dispose();
-            gbMask.Dispose();
-            reducedGreen.Dispose();
         }
 
         /// <summary>
@@ -337,49 +307,123 @@ namespace VisionAlgolismViewer.Helpers
         /// </summary>
         /// <param name="image">Input image</param>
         /// <param name="threshold">Detection threshold (100-255)</param>
-        /// <param name="blueLevel">Blue reduction level (0-100, default 50)</param>
+        /// <param name="blueLevel">Blue reduction level (0-100: 0=original, 100=fully removed to grayscale)</param>
         public static void ApplyBlueEyeReduction(Mat image, int threshold = 150, int blueLevel = 50)
         {
             threshold = Math.Clamp(threshold, 100, 255);
             blueLevel = Math.Clamp(blueLevel, 0, 100);
 
             Mat[] channels = Cv2.Split(image);
-            Mat mask = new Mat();
 
-            // Detect blue eyes: B > threshold && B > R * 1.3 && B > G * 1.3
-            Mat blueMask = channels[0].GreaterThan(threshold);
-            Mat redComp = channels[2] * 1.3;
-            Mat greenComp = channels[1] * 1.3;
-            Mat brMask = channels[0].GreaterThan(redComp);
-            Mat bgMask = channels[0].GreaterThan(greenComp);
+            // Blue 채널에서 threshold 이상인 픽셀만 선택
+            Mat mask = channels[0].Threshold(threshold, 255, ThresholdTypes.Binary);
 
-            Cv2.BitwiseAnd(blueMask, brMask, mask);
-            Cv2.BitwiseAnd(mask, bgMask, mask);
+            float factor = blueLevel / 100.0f;
 
-            // Apply reduction - blend blue channel with average of red and green
-            Mat reducedBlue = new Mat();
-            Cv2.AddWeighted(channels[1], 0.5, channels[2], 0.5, 0, reducedBlue);
+            // Calculate grayscale from Red and Green channels
+            Mat gray = new Mat();
+            Cv2.AddWeighted(channels[2], 0.5, channels[1], 0.5, 0, gray);
 
-            // Apply reduction based on blueLevel
-            float reductionFactor = blueLevel / 100.0f;
+            // Blend Blue channel with grayscale
             Mat blended = new Mat();
-            Cv2.AddWeighted(channels[0], 1.0 - reductionFactor, reducedBlue, reductionFactor, 0, blended);
-
-            // TEST: Apply to entire image to see if logic works
-            // blended.CopyTo(channels[0], mask);  // Original: only masked areas
-            blended.CopyTo(channels[0]);  // TEST: apply to entire image
+            Cv2.AddWeighted(channels[0], 1.0 - factor, gray, factor, 0, blended);
+            blended.CopyTo(channels[0], mask);
 
             Cv2.Merge(channels, image);
-            blended.Dispose();
 
+            gray.Dispose();
+            blended.Dispose();
             foreach (var ch in channels) ch.Dispose();
             mask.Dispose();
-            blueMask.Dispose();
-            redComp.Dispose();
-            greenComp.Dispose();
-            brMask.Dispose();
-            bgMask.Dispose();
-            reducedBlue.Dispose();
+            
+        }
+
+        #endregion
+
+        #region Remove Channels
+
+        /// <summary>
+        /// Remove Red channel gradually
+        /// </summary>
+        /// <param name="image">Input image</param>
+        /// <param name="level">Removal level (0-100: 0=original, 100=fully removed)</param>
+        public static void RemoveRedChannel(Mat image, int level = 100)
+        {
+            level = Math.Clamp(level, 0, 100);
+            float factor = level / 100.0f;
+
+            Mat[] channels = Cv2.Split(image);
+
+            // Calculate grayscale from Green and Blue channels
+            Mat gray = new Mat();
+            Cv2.AddWeighted(channels[1], 0.5, channels[0], 0.5, 0, gray);
+
+            // Blend Red with grayscale
+            Mat blended = new Mat();
+            Cv2.AddWeighted(channels[2], 1.0 - factor, gray, factor, 0, blended);
+            blended.CopyTo(channels[2]);
+
+            Cv2.Merge(channels, image);
+
+            gray.Dispose();
+            blended.Dispose();
+            foreach (var ch in channels) ch.Dispose();
+        }
+
+        /// <summary>
+        /// Remove Green channel gradually
+        /// </summary>
+        /// <param name="image">Input image</param>
+        /// <param name="level">Removal level (0-100: 0=original, 100=fully removed)</param>
+        public static void RemoveGreenChannel(Mat image, int level = 100)
+        {
+            level = Math.Clamp(level, 0, 100);
+            float factor = level / 100.0f;
+
+            Mat[] channels = Cv2.Split(image);
+
+            // Calculate grayscale from Red and Blue channels
+            Mat gray = new Mat();
+            Cv2.AddWeighted(channels[2], 0.5, channels[0], 0.5, 0, gray);
+
+            // Blend Green with grayscale
+            Mat blended = new Mat();
+            Cv2.AddWeighted(channels[1], 1.0 - factor, gray, factor, 0, blended);
+            blended.CopyTo(channels[1]);
+
+            Cv2.Merge(channels, image);
+
+            gray.Dispose();
+            blended.Dispose();
+            foreach (var ch in channels) ch.Dispose();
+        }
+
+        /// <summary>
+        /// Remove Blue channel gradually
+        /// </summary>
+        /// <param name="image">Input image</param>
+        /// <param name="level">Removal level (0-100: 0=original, 100=fully removed)</param>
+        public static void RemoveBlueChannel(Mat image, int level = 100)
+        {
+            level = Math.Clamp(level, 0, 100);
+            float factor = level / 100.0f;
+
+            Mat[] channels = Cv2.Split(image);
+
+            // Calculate grayscale from Red and Green channels
+            Mat gray = new Mat();
+            Cv2.AddWeighted(channels[2], 0.5, channels[1], 0.5, 0, gray);
+
+            // Blend Blue with grayscale
+            Mat blended = new Mat();
+            Cv2.AddWeighted(channels[0], 1.0 - factor, gray, factor, 0, blended);
+            blended.CopyTo(channels[0]);
+
+            Cv2.Merge(channels, image);
+
+            gray.Dispose();
+            blended.Dispose();
+            foreach (var ch in channels) ch.Dispose();
         }
 
         #endregion

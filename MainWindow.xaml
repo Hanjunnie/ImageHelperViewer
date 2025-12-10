@@ -94,6 +94,16 @@
                         <dxb:BarButtonItem Content="Green Reduction"
                       Command="{Binding ApplyGreenEyeReductionCommand}"/>
                     </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Remove Channels">
+                        <dxb:BarButtonItem Content="Remove Red"
+                                          Command="{Binding RemoveRedChannelCommand}"/>
+                        <dxb:BarButtonItem Content="Remove Green"
+                                          Command="{Binding RemoveGreenChannelCommand}"/>
+                        <dxb:BarButtonItem Content="Remove Blue"
+                                          Command="{Binding RemoveBlueChannelCommand}"/>
+                        <dxb:BarButtonItem Content="Show All (RGB)"
+                                          Command="{Binding ShowAllChannelsCommand}"/>
+                    </dxr:RibbonPageGroup>
                 </dxr:RibbonPage>
 
             </dxr:RibbonDefaultPageCategory>
@@ -320,7 +330,7 @@
                                     </Grid.ColumnDefinitions>
                                     <Slider Grid.Column="0" Minimum="0" Maximum="100"
                                             Value="{Binding RedEyeLevel, Mode=TwoWay}"
-                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                            TickFrequency="1" IsSnapToTickEnabled="True"/>
                                     <TextBlock Grid.Column="1" Text="{Binding RedEyeLevel}"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
                                 </Grid>
@@ -358,7 +368,7 @@
                                     </Grid.ColumnDefinitions>
                                     <Slider Grid.Column="0" Minimum="0" Maximum="100"
                                             Value="{Binding GreenEyeLevel, Mode=TwoWay}"
-                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                            TickFrequency="1" IsSnapToTickEnabled="True"/>
                                     <TextBlock Grid.Column="1" Text="{Binding GreenEyeLevel}"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
                                 </Grid>
@@ -396,7 +406,7 @@
                                     </Grid.ColumnDefinitions>
                                     <Slider Grid.Column="0" Minimum="0" Maximum="100"
                                             Value="{Binding BlueEyeLevel, Mode=TwoWay}"
-                                            TickFrequency="5" IsSnapToTickEnabled="True"/>
+                                            TickFrequency="1" IsSnapToTickEnabled="True"/>
                                     <TextBlock Grid.Column="1" Text="{Binding BlueEyeLevel}"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
                                 </Grid>
@@ -498,6 +508,81 @@
                                             Value="{Binding BoxBlurRadius, Mode=TwoWay}"
                                             TickFrequency="1" IsSnapToTickEnabled="True"/>
                                     <TextBlock Grid.Column="1" Text="{Binding BoxBlurRadius}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Remove Red Channel Controls -->
+                        <dxlc:GroupBox Header="Remove Red Channel" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="RemoveRedChannel"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Remove Red Level" Margin="0,5,0,2" Foreground="#FFFF6B6B"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="100"
+                                            Value="{Binding RemoveRedLevel, Mode=TwoWay}"
+                                            TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding RemoveRedLevel}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Remove Green Channel Controls -->
+                        <dxlc:GroupBox Header="Remove Green Channel" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="RemoveGreenChannel"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Remove Green Level" Margin="0,5,0,2" Foreground="#FF6BFF6B"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="100"
+                                            Value="{Binding RemoveGreenLevel, Mode=TwoWay}"
+                                            TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding RemoveGreenLevel}"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
+                                </Grid>
+                            </StackPanel>
+                        </dxlc:GroupBox>
+
+                        <!-- Remove Blue Channel Controls -->
+                        <dxlc:GroupBox Header="Remove Blue Channel" Margin="0,5">
+                            <dxlc:GroupBox.Visibility>
+                                <Binding Path="CurrentEffectType">
+                                    <Binding.Converter>
+                                        <local:EffectTypeToVisibilityConverter TargetEffect="RemoveBlueChannel"/>
+                                    </Binding.Converter>
+                                </Binding>
+                            </dxlc:GroupBox.Visibility>
+                            <StackPanel>
+                                <TextBlock Text="Remove Blue Level" Margin="0,5,0,2" Foreground="#FF6B6BFF"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="50"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" Minimum="0" Maximum="100"
+                                            Value="{Binding RemoveBlueLevel, Mode=TwoWay}"
+                                            TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding RemoveBlueLevel}"
                                                VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="White"/>
                                 </Grid>
                             </StackPanel>

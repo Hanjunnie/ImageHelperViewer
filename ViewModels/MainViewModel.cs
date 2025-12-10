@@ -31,7 +31,11 @@ namespace VisionAlgolismViewer.ViewModels
         BoxBlur,
         RedEyeReduction,
         GreenEyeReduction,
-        BlueEyeReduction
+        BlueEyeReduction,
+        RemoveRedChannel,
+        RemoveGreenChannel,
+        RemoveBlueChannel,
+        ShowAllChannels
     }
 
     public class MainViewModel : ViewModelBase
@@ -356,6 +360,58 @@ namespace VisionAlgolismViewer.ViewModels
             }
         }
 
+        // Remove Channel Parameters
+        private int _removeRedLevel = 0;
+        public int RemoveRedLevel
+        {
+            get => _removeRedLevel;
+            set
+            {
+                if (SetProperty(ref _removeRedLevel, value, nameof(RemoveRedLevel)))
+                {
+                    if (CurrentEffectType == EffectType.RemoveRedChannel)
+                    {
+                        ApplyRemoveRedInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
+        private int _removeGreenLevel = 0;
+        public int RemoveGreenLevel
+        {
+            get => _removeGreenLevel;
+            set
+            {
+                if (SetProperty(ref _removeGreenLevel, value, nameof(RemoveGreenLevel)))
+                {
+                    if (CurrentEffectType == EffectType.RemoveGreenChannel)
+                    {
+                        ApplyRemoveGreenInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
+        private int _removeBlueLevel = 0;
+        public int RemoveBlueLevel
+        {
+            get => _removeBlueLevel;
+            set
+            {
+                if (SetProperty(ref _removeBlueLevel, value, nameof(RemoveBlueLevel)))
+                {
+                    if (CurrentEffectType == EffectType.RemoveBlueChannel)
+                    {
+                        ApplyRemoveBlueInternal();
+                        UpdateCurrentImage();
+                    }
+                }
+            }
+        }
+
         // Image Display
         private System.Windows.Media.Stretch _imageStretch = System.Windows.Media.Stretch.Uniform;
         public System.Windows.Media.Stretch ImageStretch
@@ -423,6 +479,10 @@ namespace VisionAlgolismViewer.ViewModels
         public ICommand NavigateForwardCommand { get; }
         public ICommand ApplyCurrentChangesCommand { get; }
         public ICommand ClearPreviewCommand { get; }
+        public ICommand RemoveRedChannelCommand { get; }
+        public ICommand RemoveGreenChannelCommand { get; }
+        public ICommand RemoveBlueChannelCommand { get; }
+        public ICommand ShowAllChannelsCommand { get; }
 
         #endregion
 
@@ -463,6 +523,10 @@ namespace VisionAlgolismViewer.ViewModels
             NavigateForwardCommand = new DelegateCommand(NavigateForward, () => CanNavigateForward);
             ApplyCurrentChangesCommand = new DelegateCommand(ApplyCurrentChanges, CanApplyCurrentChanges);
             ClearPreviewCommand = new DelegateCommand(ClearHistory, CanClearPreview);
+            RemoveRedChannelCommand = new DelegateCommand(RemoveRedChannel, CanApplyFilter);
+            RemoveGreenChannelCommand = new DelegateCommand(RemoveGreenChannel, CanApplyFilter);
+            RemoveBlueChannelCommand = new DelegateCommand(RemoveBlueChannel, CanApplyFilter);
+            ShowAllChannelsCommand = new DelegateCommand(ShowAllChannels, CanApplyFilter);
         }
 
         #region Command Methods
@@ -676,7 +740,8 @@ namespace VisionAlgolismViewer.ViewModels
         private void ApplyRedReductionInternal()
         {
             if (!IsImageLoaded) return;
-            // Don't reset - accumulate effects
+            // Reset to original before applying
+            _imageProcessor.ResetToOriginal();
             ImageEffects.ApplyRedEyeReduction(_imageProcessor.GetProcessedImage()!, RedEyeThreshold, RedEyeLevel);
         }
 
@@ -693,7 +758,8 @@ namespace VisionAlgolismViewer.ViewModels
         private void ApplyGreenReductionInternal()
         {
             if (!IsImageLoaded) return;
-            // Don't reset - accumulate effects
+            // Reset to original before applying
+            _imageProcessor.ResetToOriginal();
             ImageEffects.ApplyGreenEyeReduction(_imageProcessor.GetProcessedImage()!, GreenEyeThreshold, GreenEyeLevel);
         }
 
@@ -710,8 +776,68 @@ namespace VisionAlgolismViewer.ViewModels
         private void ApplyBlueReductionInternal()
         {
             if (!IsImageLoaded) return;
-            // Don't reset - accumulate effects
+            // Reset to original before applying
+            _imageProcessor.ResetToOriginal();
             ImageEffects.ApplyBlueEyeReduction(_imageProcessor.GetProcessedImage()!, BlueEyeThreshold, BlueEyeLevel);
+        }
+
+        private void RemoveRedChannel()
+        {
+            if (!IsImageLoaded) return;
+
+            CurrentEffectType = EffectType.RemoveRedChannel;
+            ApplyRemoveRedInternal();
+            UpdateCurrentImage();
+            StatusText = $"Remove Red Channel - Level: {RemoveRedLevel}";
+        }
+
+        private void ApplyRemoveRedInternal()
+        {
+            if (!IsImageLoaded) return;
+            _imageProcessor.ResetToOriginal();
+            ImageEffects.RemoveRedChannel(_imageProcessor.GetProcessedImage()!, RemoveRedLevel);
+        }
+
+        private void RemoveGreenChannel()
+        {
+            if (!IsImageLoaded) return;
+
+            CurrentEffectType = EffectType.RemoveGreenChannel;
+            ApplyRemoveGreenInternal();
+            UpdateCurrentImage();
+            StatusText = $"Remove Green Channel - Level: {RemoveGreenLevel}";
+        }
+
+        private void ApplyRemoveGreenInternal()
+        {
+            if (!IsImageLoaded) return;
+            _imageProcessor.ResetToOriginal();
+            ImageEffects.RemoveGreenChannel(_imageProcessor.GetProcessedImage()!, RemoveGreenLevel);
+        }
+
+        private void RemoveBlueChannel()
+        {
+            if (!IsImageLoaded) return;
+
+            CurrentEffectType = EffectType.RemoveBlueChannel;
+            ApplyRemoveBlueInternal();
+            UpdateCurrentImage();
+            StatusText = $"Remove Blue Channel - Level: {RemoveBlueLevel}";
+        }
+
+        private void ApplyRemoveBlueInternal()
+        {
+            if (!IsImageLoaded) return;
+            _imageProcessor.ResetToOriginal();
+            ImageEffects.RemoveBlueChannel(_imageProcessor.GetProcessedImage()!, RemoveBlueLevel);
+        }
+
+        private void ShowAllChannels()
+        {
+            CurrentEffectType = EffectType.ShowAllChannels;
+            _imageProcessor.ResetToOriginal();
+            UpdateCurrentImage();
+            StatusText = "Show All Channels (RGB)";
         }
 
         private void ApplyFilter(Action filterAction, string filterName)
